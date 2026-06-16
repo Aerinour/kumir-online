@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КуМир Онлайн</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --panel-bg: #1a1a1e;
+            --editor-bg: #0f0f11;
+            --text-color: #e2e8f0;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --error-color: #ef4444;
+            --success-color: #10b981;
+            --wall-color: #3f3f46;
+            --wall-active: #f43f5e;
+            --paint-color: rgba(99, 102, 241, 0.35);
+            --oge-color: #a855f7;
+            --oge-bg: #23153c;
+        }
+
+        body {
+            margin: 0; padding: 25px;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 0 0 20px 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            display: flex; gap: 25px; width: 100%; max-width: 1300px; height: calc(100% - 65px);
+        }
+
+        .panel {
+            background: var(--panel-bg); border: 1px solid #27272a; border-radius: 12px;
+            padding: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            display: flex; flex-direction: column;
+        }
+
+        .left-panel { flex: 1; }
+        .right-panel { flex: 1.3; align-items: center; justify-content: flex-start; overflow-y: auto; }
+
+        .controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; width: 100%; }
+        .controls-group {
+            display: flex; align-items: center; gap: 8px; background: #27272a;
+            padding: 4px 8px; border-radius: 6px; border: 1px solid #3f3f46;
+        }
+
+        button {
+            background-color: var(--accent-color); color: white; border: none;
+            padding: 10px 16px; border-radius: 6px; cursor: pointer;
+            font-weight: 600; font-size: 14px; transition: all 0.2s ease;
+        }
+        button:hover { background-color: var(--accent-hover); transform: translateY(-1px); }
+        button.btn-clear { background-color: #27272a; border: 1px solid #3f3f46; color: #d4d4d8; }
+        button.btn-clear:hover { background-color: #3f3f46; color: #fff; }
+        button.btn-stop { background-color: #dc2626; }
+        button.btn-stop:hover { background-color: #b91c1c; }
+        
+        button.btn-oge-toggle {
+            background-color: var(--oge-color); font-weight: bold;
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+        }
+        button.btn-oge-toggle:hover { background-color: #9333ea; }
+
+        /* Выпадающее меню Вставка */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content {
+            display: none; position: absolute; background-color: #1e1e24;
+            min-width: 240px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.6);
+            z-index: 100; border: 1px solid #3f3f46; border-radius: 6px; padding: 4px 0;
+        }
+        .dropdown-content button {
+            background: none; color: #e2e8f0; padding: 8px 16px;
+            text-align: left; width: 100%; border-radius: 0; font-weight: normal;
+            font-family: monospace; display: flex; justify-content: space-between;
+        }
+        .dropdown-content button:hover { background-color: #27272a; transform: none; }
+        .dropdown-divider { border-top: 1px solid #3f3f46; margin: 4px 0; }
+        .dropdown-hotkey { color: #71717a; font-size: 12px; }
+        .show { display: block; }
+
+        /* Окно ОГЭ режима */
+        .oge-overlay-panel {
+            display: none; width: 100%; max-width: 1260px;
+            background: var(--oge-bg); border: 2px solid var(--oge-color);
+            border-radius: 12px; padding: 20px; margin-bottom: 15px;
+            box-sizing: border-box; box-shadow: 0 8px 32px rgba(168, 85, 247, 0.2);
+        }
+        .oge-layout { display: flex; gap: 25px; }
+        .oge-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .oge-header-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .oge-title { font-size: 16px; font-weight: 700; color: #f3e8ff; }
+        .oge-text { font-size: 13.5px; line-height: 1.6; color: #cbd5e1; max-height: 250px; overflow-y: auto; padding-right: 5px; }
+        
+        .oge-visuals {
+            flex: 1.6; background: #110c1c; border-radius: 8px; border: 1px solid #4a2875;
+            padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+        }
+        .oge-images-container {
+            display: flex; gap: 12px; width: 100%; justify-content: center; align-items: center;
+        }
+        
+        .oge-preview-box {
+            flex: 1; height: 220px; border: 1px solid #cbd5e1;
+            background-color: #ffffff; border-radius: 6px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            padding: 8px; box-sizing: border-box;
+        }
+        .oge-preview-box img {
+            width: 100%; height: 100%; object-fit: contain;
+        }
+
+        .solution-box {
+            display: none; margin-top: 15px; background: #05030a; border: 1px solid #4a2875;
+            border-radius: 6px; padding: 12px; font-family: monospace; font-size: 13.5px;
+            color: #a7f3d0; white-space: pre-wrap; overflow-x: auto;
+        }
+
+        /* Симулятор */
+        textarea {
+            flex: 1; background-color: var(--editor-bg); color: #a7f3d0;
+            border: 1px solid #27272a; border-radius: 8px; padding: 15px;
+            font-family: 'Fira Code', 'Courier New', monospace; font-size: 15px;
+            resize: none; line-height: 1.5; outline: none;
+        }
+        textarea:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+
+        .console {
+            height: 65px; background: var(--editor-bg); border: 1px solid #27272a;
+            margin-top: 15px; border-radius: 8px; padding: 12px;
+            font-family: monospace; font-size: 14px; overflow-y: auto; color: #a1a1aa;
+        }
+        .console.error { color: var(--error-color); background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); }
+        .console.success { color: var(--success-color); background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2); }
+
+        .grid-container {
+            position: relative; background: #27272a; padding: 6px;
+            border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7); margin-top: 15px;
+        }
+        .grid { display: grid; background: #18181b; gap: 2px; position: relative; border-radius: 6px; overflow: hidden; }
+        .cell { background: #1e1e24; position: relative; cursor: pointer; transition: background 0.2s; }
+        .cell:hover { background: #2a2a35; }
+        .cell.painted { background: var(--paint-color) !important; box-shadow: inset 0 0 10px rgba(99, 102, 241, 0.5); }
+
+        .wall-h, .wall-v { position: absolute; background: transparent; z-index: 10; cursor: pointer; }
+        .wall-h { height: 6px; margin-top: -3px; }
+        .wall-v { width: 6px; margin-left: -3px; }
+        .wall-h:hover, .wall-v:hover { background: rgba(244, 63, 94, 0.4); }
+        .wall-h.active, .wall-v.active { background: var(--wall-active); box-shadow: 0 0 8px var(--wall-active); }
+
+        #robot {
+            position: absolute; background: linear-gradient(135deg, #fb923c, #ea580c);
+            border-radius: 8px; transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); z-index: 5;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: white; box-shadow: 0 0 12px rgba(234, 88, 12, 0.6);
+            pointer-events: none; font-size: 16px;
+        }
+        .size-info { color: #a855f7; font-weight: 600; padding: 0 5px; font-size: 14px; }
+        
+        /* Улучшенный блок управления */
+        .instruction-panel {
+            margin-top: 20px; width: 100%; background: #1e1e24; border: 1px solid #27272a;
+            border-radius: 8px; padding: 15px; box-sizing: border-box;
+        }
+        .instruction-title { font-weight: 700; font-size: 14px; color: #f43f5e; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
+        .instruction-list { margin: 0; padding-left: 20px; font-size: 13.5px; color: #cbd5e1; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <h1>КуМир Онлайн (Робот)</h1>
+
+    <div id="ogeOverlay" class="oge-overlay-panel">
+        <div class="oge-layout">
+            <div class="oge-info">
+                <div class="oge-header-row">
+                    <span style="font-size:18px;">📋</span>
+                    <select id="taskSelect">
+                        <option value="task1">Задание 15.1</option>
+                        <option value="task2">Задание 15.2</option>
+                        <option value="task3">Задание 15.3</option>
+                        <option value="task4">Задание 15.4</option>
+                    </select>
+                    <div id="ogeTitle" class="oge-title">Задание 15.1</div>
+                </div>
+                <div id="ogeText" class="oge-text">Описание задания загружается...</div>
+                <div style="margin-top:15px; display:flex; gap:10px;">
+                    <button id="showSolBtn" style="background:#a855f7;">👁 Показать код решения</button>
+                    <button id="applySolBtn" style="background:#10b981; display:none;">📋 Скопировать код в редактор</button>
+                </div>
+                <div id="solBox" class="solution-box"></div>
+            </div>
+            <div class="oge-visuals">
+                <span style="font-size:12px; color:#a78bfa; font-weight:600;">Рисунки к заданию (Исходный и Результат):</span>
+                <div class="oge-images-container">
+                    <div class="oge-preview-box" id="boxImg1">
+                        <img id="ogeImage1" src="" alt="Исходное поле">
+                    </div>
+                    <div class="oge-preview-box" id="boxImg2">
+                        <img id="ogeImage2" src="" alt="Результат работы">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="panel left-panel">
+            <div class="controls">
+                <button id="runBtn">▶ Запустить</button>
+                <button id="stopBtn" class="btn-stop">■ Сброс</button>
+                <button id="clearCodeBtn" class="btn-clear">Очистить код</button>
+                <button id="ogeToggleBtn" class="btn-oge-toggle">🎓 Режим ОГЭ</button>
+                
+                <div class="dropdown">
+                    <button id="insertMenuBtn" class="btn-clear" style="border-color: var(--accent-color); color: #a5b4fc;">🔹 Вставка</button>
+                    <div id="insertDropdown" class="dropdown-content">
+                        <button onclick="insertCode('алг\\nнач\\n\\nкон')"><span>алг-нач-кон</span><span class="dropdown-hotkey">Esc, A</span></button>
+                        <button onclick="insertCode('если  то\\n\\nвсе')"><span>если-то-все</span><span class="dropdown-hotkey">Esc, E</span></button>
+                        <button onclick="insertCode('выбор\\n  при : \\n\\nвсе')"><span>выбор-при-все</span><span class="dropdown-hotkey">Esc, B</span></button>
+                        <button onclick="insertCode('иначе\\n  ')"><span>иначе</span><span class="dropdown-hotkey">Esc, И</span></button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="insertCode('нц  раз\\n  \\nкц')"><span>нц-раз-кц</span><span class="dropdown-hotkey">Esc, P</span></button>
+                        <button onclick="insertCode('нц для  от  до \\n  \\nкц')"><span>нц-для-кц</span><span class="dropdown-hotkey">Esc, Д</span></button>
+                        <button onclick="insertCode('нц пока \\n  \\nкц')"><span>нц-пока-кц</span><span class="dropdown-hotkey">Esc, П</span></button>
+                        <button onclick="insertCode('нц\\n  \\nкц')"><span>нц-кц</span><span class="dropdown-hotkey">Esc, Ц</span></button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="insertCode('вверх')"><span>вверх</span><span class="dropdown-hotkey">Esc, Вверх</span></button>
+                        <button onclick="insertCode('вниз')"><span>вниз</span><span class="dropdown-hotkey">Esc, Вниз</span></button>
+                        <button onclick="insertCode('влево')"><span>влево</span><span class="dropdown-hotkey">Esc, Влево</span></button>
+                        <button onclick="insertCode('вправо')"><span>вправо</span><span class="dropdown-hotkey">Esc, Вправо</span></button>
+                        <button onclick="insertCode('закрасить')"><span>закрасить</span><span class="dropdown-hotkey">Esc, Пробел</span></button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="insertCode('использовать Робот')"><span>использовать Робот</span><span class="dropdown-hotkey">Esc, 1</span></button>
+                    </div>
+                </div>
+            </div>
+            <textarea id="codeEditor" spellcheck="false">использовать Робот
+алг
+нач
+нц пока не справа стена
+  закрасить
+  вправо
+кц
+кон</textarea>
+            <div id="console" class="console">Система готова...</div>
+        </div>
+
+        <div class="panel right-panel">
+            <div class="controls">
+                <div class="controls-group">
+                    <button id="decSizeBtn" class="btn-clear" style="padding:5px 10px;">➖</button>
+                    <span class="size-info" id="sizeLabel">Размер: 10x10</span>
+                    <button id="incSizeBtn" class="btn-clear" style="padding:5px 10px;">➕</button>
+                </div>
+                <button id="clearWallsBtn" class="btn-clear">Сбросить всё</button>
+                <button id="resetPosBtn" class="btn-clear">В угол (1,1)</button>
+            </div>
+            
+            <div class="grid-container" id="gridContainer">
+                <div id="grid" class="grid"></div>
+            </div>
+
+            <div class="instruction-panel">
+                <div class="instruction-title">🛠 Управление полем редактора:</div>
+                <ul class="instruction-list">
+                    <li><b>Левый клик по клетке:</b> Закрасить / стереть закрашенную область вручную.</li>
+                    <li><b>Правый клик по клетке:</b> Переместить Робота 🤖 в выбранное место.</li>
+                    <li><b>Клик по серым линиям (границам):</b> Поставить или убрать внутреннюю стену.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ogeDatabase = {
+            task1: {
+                title: "Задание 15.1",
+                text: `На бесконечном поле имеются четыре стены, соединённые между собой, которые образуют прямоугольник. Длины стен неизвестны. В левой вертикальной стене есть ровно один проход, в нижней горизонтальной стене также есть ровно один проход. Проход не может примыкать к углу прямоугольника. Точные места проходов и ширина проходов неизвестны. Робот находится около нижнего конца левой вертикальной стены, снаружи прямоугольника и выше нижней стены.<br><br>
+На рисунке указан один из возможных способов расположения стен и Робота (Робот обозначен буквой «Р»).<br><br>
+Напишите для Робота алгоритм, закрашивающий все клетки, расположенные вдоль стен прямоугольника с внутренней стороны. Проходы должны остаться незакрашенными. Робот должен закрасить только клетки, удовлетворяющие данному условию. Например, для приведённого выше рисунка Робот должен закрасить следующие клетки (см. рисунок).<br><br>
+При исполнении алгоритма Робот не должен разрушиться, выполнение алгоритма должно завершиться. Конечное расположение Робота может быть произвольным. Алгоритм должен решать задачу для любого допустимого расположения стен и любого расположения и размера прохода внутри стены.`,
+                imgUrl1: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/A8C8CB02A821AE65480EFE85F76C5A4E/xs3qstsrcA8C8CB02A821AE65480EFE85F76C5A4E_1_1516810705.png",
+                imgUrl2: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/A8C8CB02A821AE65480EFE85F76C5A4E/xs3qstsrcA8C8CB02A821AE65480EFE85F76C5A4E_2_1516810705.png",
+                code: `использовать Робот
+алг
+нач
+нц пока не справа свободно
+      вверх
+кц
+вправо
+нц пока слева свободно
+      вверх
+кц
+нц пока сверху свободно
+      закрасить
+      вверх
+кц
+нц пока справа свободно
+      закрасить
+      вправо
+кц
+нц пока снизу свободно
+      закрасить
+      вниз
+кц
+нц пока не снизу свободно
+      закрасить
+      влево
+кц
+нц пока снизу свободно
+      влево
+кц
+нц пока слева свободно
+      закрасить
+      влево
+кц
+нц пока не слева свободно
+      закрасить
+      вверх
+кц
+кон`
+            },
+            task2: {
+                title: "Задание 15.2",
+                text: `На бесконечном поле имеются две одинаковые горизонтальные параллельные стены, расположенные друг под другом и отстоящие друг от друга более чем на 1 клетку. Левые края стен находятся на одном уровне. Длины стен неизвестны. Робот находится в клетке, расположенной непосредственно под нижней стеной.<br><br>
+На рисунке указан один из возможных способов расположения стен и Робота (Робот обозначен буквой «Р»).<br><br>
+Напишите для Робота алгоритм, закрашивающий все клетки, расположенные ниже горизонтальных стен. Робот должен закрасить только клетки, удовлетворяющие данному условию. Например, для приведённого выше рисунка Робот должен закрасить следующие клетки (см. рисунок).<br><br>
+Конечное расположение Робота может быть произвольным. Алгоритм должен решать задачу для произвольного размера и любого допустимого расположения стен. При исполнении алгоритма Робот не должен разрушиться, выполнение алгоритма должно завершиться.`,
+                imgUrl1: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/000F999F9FD6B6C24D3789E99438F33A/xs3qstsrc000F999F9FD6B6C24D3789E99438F33A_3_1769681426.png",
+                imgUrl2: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/000F999F9FD6B6C24D3789E99438F33A/xs3qstsrc000F999F9FD6B6C24D3789E99438F33A_4_1769681426.png",
+               code: `использовать Робот
+алг
+нач
+нц пока не сверху свободно
+  влево
+кц
+  вправо
+нц пока не сверху свободно
+  закрасить
+  вправо
+кц
+  вверх
+  влево
+нц пока сверху свободно
+  вверх
+кц
+нц пока не сверху свободно
+  закрасить
+  влево
+кц
+кон`
+            },
+            task3: {
+                title: "Задание 15.3",
+                text: `На бесконечном поле имеется горизонтальная стена. Длина стены неизвестна. Робот находится сверху от стены в левом её конце. На рисунке приведено расположение Робота относительно стены (Робот обозначен буквой «Р»): <br><br>
+Напишите алгоритм для Робота, закрашивающий все клетки, расположенные выше стены на расстоянии одной пустой клетки от стены, независимо от длины стены. Робот должен закрасить только клетки, удовлетворяющие заданному условию. Например, для приведённого выше рисунка Робот должен закрасить следующие клетки:<br><br>
+Конечное расположение Робота может быть произвольным. Алгоритм должен решать задачу для произвольного размера стены. При исполнении алгоритма Робот не должен разрушиться, выполнение алгоритма должно завершиться.`,
+                imgUrl1: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/0399006A0963AC204607303CF7103E07/xs3qstsrc0399006A0963AC204607303CF7103E07_1_1769682750.jpg",
+                imgUrl2: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/0399006A0963AC204607303CF7103E07/xs3qstsrc0399006A0963AC204607303CF7103E07_2_1769682750.jpg",
+               code: `использовать Робот
+алг
+нач
+нц пока снизу стена 
+  вверх
+  закрасить
+  вправо
+  вниз
+кц
+кон`
+            },
+            task4: {
+                title: "Задание 15.4",
+                text: `На бесконечном поле имеются две одинаковые вертикальные стены и одна горизонтальная, соединяющая верхние концы стен. Длины стен неизвестны. Робот находится в одной из клеток, расположенных между нижними краями вертикальных стен. <br><br>
+На рисунке указан один из возможных способов расположения стен и Робота (Робот обозначен буквой «Р»).<br><br>
+Напишите для Робота алгоритм, закрашивающий все клетки, расположенные выше горизонтальной стены непосредственно над ней. Робот должен закрасить только клетки, удовлетворяющие данному условию. Например, для приведённого выше рисунка Робот должен закрасить следующие клетки (см. рисунок).<br><br>
+Конечное расположение Робота может быть произвольным. Алгоритм должен решать задачу для произвольного размера и любого допустимого расположения стен. При исполнении алгоритма Робот не должен разрушиться, выполнение алгоритма должно завершиться.`,
+                imgUrl1: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/0D909E12600CAD6C4DE34333F73A0E0F/xs3qstsrc0D909E12600CAD6C4DE34333F73A0E0F_1_1769678184.jpg",
+                imgUrl2: "https://oge.fipi.ru/docs/74676951F093A0754D74F2D6E7955F06/questions/0D909E12600CAD6C4DE34333F73A0E0F/xs3qstsrc0D909E12600CAD6C4DE34333F73A0E0F_2_1769678184.jpg",
+               code: `использовать Робот
+алг
+нач
+нц пока слева свободно
+  влево
+кц
+нц пока слева стена
+  вниз
+кц
+влево
+нц пока справа свободно
+  вверх
+кц
+нц пока справа стена
+  вверх
+кц
+вправо
+нц пока снизу стена
+  закрасить
+  вправо
+кц
+кон`
+            }
+        };
+
+        let fieldSize = 10;
+        const CELL_SIZE = 42;
+        const GAP = 2;
+
+        let robotX = 0, robotY = 0;
+        let userStartX = 0, userStartY = 0;
+
+        let wallsH, wallsV, paintedCells, startPaintedCells;
+        let isRunning = false;
+        let executionTimeout = null;
+        let globalStepCount = 0;
+
+        const gridEl = document.getElementById('grid');
+        const consoleEl = document.getElementById('console');
+        const codeEditor = document.getElementById('codeEditor');
+        const sizeLabel = document.getElementById('sizeLabel');
+
+        function initArrays(size) {
+            wallsH = Array(size + 1).fill(null).map(() => Array(size).fill(false));
+            wallsV = Array(size).fill(null).map(() => Array(size + 1).fill(false));
+            paintedCells = Array(size).fill(null).map(() => Array(size).fill(false));
+            startPaintedCells = Array(size).fill(null).map(() => Array(size).fill(false));
+
+            for(let x=0; x<size; x++) { wallsH[0][x] = true; wallsH[size][x] = true; }
+            for(let y=0; y<size; y++) { wallsV[y][0] = true; wallsV[y][size] = true; }
+        }
+
+        function createGrid() {
+            gridEl.style.gridTemplateColumns = `repeat(${fieldSize}, ${CELL_SIZE}px)`;
+            gridEl.style.gridTemplateRows = `repeat(${fieldSize}, ${CELL_SIZE}px)`;
+            gridEl.innerHTML = '<div id="robot">🤖</div>';
+            
+            const rEl = document.getElementById('robot');
+            rEl.style.width = `${CELL_SIZE - 10}px`; rEl.style.height = `${CELL_SIZE - 10}px`;
+
+            for (let y = 0; y < fieldSize; y++) {
+                for (let x = 0; x < fieldSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (paintedCells[y][x]) cell.classList.add('painted');
+                    cell.dataset.x = x; cell.dataset.y = y;
+                    
+                    cell.addEventListener('click', (e) => {
+                        if (e.target === cell && !isRunning) {
+                            paintedCells[y][x] = !paintedCells[y][x];
+                            cell.classList.toggle('painted', paintedCells[y][x]);
+                            startPaintedCells[y][x] = paintedCells[y][x];
+                        }
+                    });
+
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        if (!isRunning) {
+                            robotX = parseInt(cell.dataset.x); robotY = parseInt(cell.dataset.y);
+                            userStartX = robotX; userStartY = robotY;
+                            updateRobotPosition();
+                            log(`Робот перемещен на клетку [${robotX + 1}, ${robotY + 1}]`);
+                        }
+                    });
+
+                    gridEl.appendChild(cell);
+
+                    if (y > 0) {
+                        const wh = document.createElement('div');
+                        wh.className = `wall-h ${wallsH[y][x] ? 'active' : ''}`;
+                        wh.style.top = `${y * (CELL_SIZE + GAP)}px`; wh.style.left = `${x * (CELL_SIZE + GAP)}px`; wh.style.width = `${CELL_SIZE}px`;
+                        wh.addEventListener('click', () => { if (!isRunning) { wallsH[y][x] = !wallsH[y][x]; wh.classList.toggle('active', wallsH[y][x]); } });
+                        gridEl.appendChild(wh);
+                    }
+                    if (x > 0) {
+                        const wv = document.createElement('div');
+                        wv.className = `wall-v ${wallsV[y][x] ? 'active' : ''}`;
+                        wv.style.top = `${y * (CELL_SIZE + GAP)}px`; wv.style.left = `${x * (CELL_SIZE + GAP)}px`; wv.style.height = `${CELL_SIZE}px`;
+                        wv.addEventListener('click', () => { if (!isRunning) { wallsV[y][x] = !wallsV[y][x]; wv.classList.toggle('active', wallsV[y][x]); } });
+                        gridEl.appendChild(wv);
+                    }
+                }
+            }
+            updateRobotPosition();
+        }
+
+        function updateRobotPosition() {
+            const r = document.getElementById('robot');
+            if (r) { r.style.left = `${robotX * (CELL_SIZE + GAP) + 5}px`; r.style.top = `${robotY * (CELL_SIZE + GAP) + 5}px`; }
+        }
+
+        function log(text, type = '') { consoleEl.innerText = text; consoleEl.className = 'console ' + type; }
+
+        function evaluateSingleAtom(token) {
+            token = token.trim();
+            if (token === 'сверху свободно') return !wallsH[robotY][robotX];
+            if (token === 'сверху занято' || token === 'сверху стена') return wallsH[robotY][robotX];
+            if (token === 'снизу свободно') return !wallsH[robotY + 1][robotX];
+            if (token === 'снизу занято' || token === 'снизу стена') return wallsH[robotY + 1][robotX];
+            if (token === 'слева свободно') return !wallsV[robotY][robotX];
+            if (token === 'слева занято' || token === 'слева стена') return wallsV[robotY][robotX];
+            if (token === 'справа свободно') return !wallsV[robotY][robotX + 1];
+            if (token === 'справа занято' || token === 'справа стена') return wallsV[robotY][robotX + 1];
+            throw new Error(`Нераспознанный датчик: "${token}"`);
+        }
+
+        function parseConditionToken(token) {
+            token = token.trim();
+            if (token.startsWith('не ')) { return !evaluateSingleAtom(token.substring(3).trim()); }
+            return evaluateSingleAtom(token);
+        }
+
+        function checkComplexCondition(condText) {
+            condText = condText.trim().toLowerCase();
+            if (condText.includes(' и ')) {
+                const subConditions = condText.split(' и ');
+                return parseConditionToken(subConditions[0]) && parseConditionToken(subConditions[1]);
+            }
+            return parseConditionToken(condText);
+        }
+
+        const insertMenuBtn = document.getElementById('insertMenuBtn');
+        const insertDropdown = document.getElementById('insertDropdown');
+
+        insertMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            insertDropdown.classList.toggle('show');
+        });
+
+        window.addEventListener('click', () => {
+            if (insertDropdown.classList.contains('show')) {
+                insertDropdown.classList.remove('show');
+            }
+        });
+
+        function insertCode(template) {
+            const start = codeEditor.selectionStart;
+            const end = codeEditor.selectionEnd;
+            const text = codeEditor.value;
+            
+            const formattedTemplate = template.replace(/\\n/g, '\n');
+            
+            codeEditor.value = text.substring(0, start) + formattedTemplate + text.substring(end);
+            codeEditor.focus();
+            codeEditor.selectionStart = codeEditor.selectionEnd = start + formattedTemplate.length;
+        }
+
+        const ogeToggleBtn = document.getElementById('ogeToggleBtn');
+        const ogeOverlay = document.getElementById('ogeOverlay');
+        const taskSelect = document.getElementById('taskSelect');
+        const showSolBtn = document.getElementById('showSolBtn');
+        const applySolBtn = document.getElementById('applySolBtn');
+        const solBox = document.getElementById('solBox');
+        
+        const ogeImage1 = document.getElementById('ogeImage1');
+        const ogeImage2 = document.getElementById('ogeImage2');
+        const boxImg2 = document.getElementById('boxImg2');
+
+        ogeToggleBtn.addEventListener('click', () => {
+            const isVisible = ogeOverlay.style.display === 'block';
+            ogeOverlay.style.display = isVisible ? 'none' : 'block';
+            ogeToggleBtn.innerText = isVisible ? '🎓 Режим ОГЭ' : '❌ Закрыть ОГЭ';
+            if (!isVisible) loadOgeTask(taskSelect.value);
+        });
+
+        function loadOgeTask(taskId) {
+            const task = ogeDatabase[taskId];
+            document.getElementById('ogeTitle').innerText = task.title;
+            document.getElementById('ogeText').innerHTML = task.text;
+            
+            ogeImage1.src = task.imgUrl1;
+            
+            if (task.imgUrl2 && task.imgUrl2.trim() !== "") {
+                ogeImage2.src = task.imgUrl2;
+                boxImg2.style.display = 'flex';
+            } else {
+                boxImg2.style.display = 'none';
+            }
+
+            solBox.innerText = task.code;
+            solBox.style.display = 'none';
+            showSolBtn.innerText = '👁 Показать код решения';
+            applySolBtn.style.display = 'none';
+        }
+
+        taskSelect.addEventListener('change', (e) => loadOgeTask(e.target.value));
+
+        showSolBtn.addEventListener('click', () => {
+            const isHidden = solBox.style.display === 'none';
+            solBox.style.display = isHidden ? 'block' : 'none';
+            showSolBtn.innerText = isHidden ? '❌ Скрыть код' : '👁 Показать код решения';
+            applySolBtn.style.display = isHidden ? 'inline-block' : 'none';
+        });
+
+        applySolBtn.addEventListener('click', () => {
+            codeEditor.value = ogeDatabase[taskSelect.value].code;
+            log('Код решения импортирован!', 'success');
+        });
+
+        function buildAST(lines, startIdx = 0) {
+            let programNode = []; 
+            let i = startIdx;
+            while (i < lines.length) {
+                let line = lines[i].trim().toLowerCase();
+                if (!line || line.startsWith('алг') || line.startsWith('нач') || line.startsWith('кон') || line.startsWith('использовать')) { i++; continue; }
+                
+                if (line.startsWith('если')) {
+                    let condNode = { type: 'if', condition: line.replace('если', '').replace('то', '').trim(), thenBody: [], elseBody: [], lineNum: i + 1 };
+                    let j = i + 1; let depth = 1; let inElse = false;
+                    while (j < lines.length) {
+                        let innerLine = lines[j].trim().toLowerCase();
+                        if (innerLine.startsWith('если') || innerLine.startsWith('нц')) depth++;
+                        if (innerLine === 'все' || innerLine === 'кц') depth--;
+                        if (depth === 1 && innerLine === 'иначе') { inElse = true; j++; continue; }
+                        if (depth === 0) break;
+                        if (!inElse) condNode.thenBody.push(lines[j]); else condNode.elseBody.push(lines[j]);
+                        j++;
+                    }
+                    if (depth !== 0) throw new Error(`Ошибка: Для 'если' на стр. ${i+1} не найден 'все'`);
+                    condNode.thenBody = buildAST(condNode.thenBody, 0);
+                    condNode.elseBody = buildAST(condNode.elseBody, 0);
+                    programNode.push(condNode); i = j + 1; continue;
+                }
+                if (line === 'все') throw new Error(`Ошибка (стр. ${i+1}): 'все' без начала условия 'если'`);
+
+                if (line.startsWith('нц')) {
+                    let loopNode = { type: null, condition: null, count: 0, body: [], lineNum: i + 1 };
+                    if (line.includes('пока')) {
+                        loopNode.type = 'while'; loopNode.condition = line.replace('нц пока', '').trim();
+                    } else if (line.match(/нц\s+(\d+)\s+раз/)) {
+                        loopNode.type = 'counter'; loopNode.count = parseInt(line.match(/нц\s+(\d+)\s+раз/)[1]);
+                    } else { throw new Error(`Ошибка (стр. ${i+1}): Неверный формат цикла 'нц'.`); }
+
+                    let bodyLines = []; let depth = 1; let j = i + 1;
+                    while (j < lines.length) {
+                        let innerLine = lines[j].trim().toLowerCase();
+                        if (innerLine.startsWith('нц') || innerLine.startsWith('если')) depth++; 
+                        if (innerLine === 'кц' || innerLine === 'все') depth--;
+                        if (depth === 0) break; bodyLines.push(lines[j]); j++;
+                    }
+                    if (depth !== 0) throw new Error(`Ошибка: Для цикла 'нц' на стр. ${i+1} не найден 'кц'`);
+                    loopNode.body = buildAST(bodyLines, 0); programNode.push(loopNode); i = j + 1; continue;
+                }
+                if (line === 'ки') throw new Error(`Ошибка (стр. ${i+1}): 'кц' без начала цикла 'нц'`);
+                if (line === 'кц') throw new Error(`Ошибка (стр. ${i+1}): 'кц' без начала цикла 'нц'`);
+                if (['вверх', 'вв', 'вниз', 'вн', 'влево', 'вл', 'вправо', 'впр', 'закрасить'].includes(line)) {
+                    let cmd = line;
+                    if (cmd === 'вв') cmd = 'вверх'; if (cmd === 'вн') cmd = 'вниз'; if (cmd === 'вл') cmd = 'влево'; if (cmd === 'впр') cmd = 'вправо';
+                    programNode.push({ type: 'command', name: cmd, lineNum: i + 1 });
+                } else { throw new Error(`Неизвестная команда (стр. ${i+1}): "${lines[i]}"`); }
+                i++;
+            }
+            return programNode;
+        }
+
+        async function runAST(nodes) {
+            for (let node of nodes) {
+                if (!isRunning) return;
+                if (++globalStepCount > 2500) throw new Error("Обнаружен бесконечный цикл!");
+                
+                if (node.type === 'command') {
+                    let crashed = false;
+                    if (node.name === 'закрасить') {
+                        paintedCells[robotY][robotX] = true;
+                        const cellEl = document.querySelector(`.cell[data-x="${robotX}"][data-y="${robotY}"]`);
+                        if (cellEl) cellEl.classList.add('painted');
+                    } 
+                    else if (node.name === 'вверх') { if (wallsH[robotY][robotX]) crashed = true; else robotY--; } 
+                    else if (node.name === 'вниз') { if (wallsH[robotY + 1][robotX]) crashed = true; else robotY++; } 
+                    else if (node.name === 'влево') { if (wallsV[robotY][robotX]) crashed = true; else robotX--; } 
+                    else if (node.name === 'вправо') { if (wallsV[robotY][robotX + 1]) crashed = true; else robotX++; }
+                    if (crashed) throw new Error(`БАБАХ! Робот врезался в стену на команде "${node.name}" (строка ${node.lineNum})`);
+                    updateRobotPosition(); await new Promise(r => executionTimeout = setTimeout(r, 120));
+                } else if (node.type === 'counter') {
+                    for (let c = 0; c < node.count; c++) { if (!isRunning) return; await runAST(node.body); }
+                } else if (node.type === 'while') {
+                    while (isRunning && checkComplexCondition(node.condition)) await runAST(node.body);
+                } else if (node.type === 'if') {
+                    if (checkComplexCondition(node.condition)) { await runAST(node.thenBody); } 
+                    else { await runAST(node.elseBody); }
+                }
+            }
+        }
+
+        function restoreToUserState() {
+            robotX = userStartX; robotY = userStartY;
+            for (let y = 0; y < fieldSize; y++) {
+                for (let x = 0; x < fieldSize; x++) { paintedCells[y][x] = startPaintedCells[y][x]; }
+            }
+            createGrid();
+        }
+
+        document.getElementById('runBtn').addEventListener('click', async () => {
+            if (isRunning) return;
+            restoreToUserState(); globalStepCount = 0;
+            try {
+                const ast = buildAST(codeEditor.value.split('\n'));
+                isRunning = true; log('Робот выполняет программу...');
+                await runAST(ast);
+                if (isRunning) { log('Программа успешно выполнена!', 'success'); isRunning = false; }
+            } catch (err) { log(err.message, 'error'); isRunning = false; }
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            isRunning = false; clearTimeout(executionTimeout); restoreToUserState(); log('Симуляция сброшена.');
+        });
+
+        function resizeField(newSize) {
+            if (isRunning) return; if (newSize < 3 || newSize > 20) return;
+            const oldSize = fieldSize, oldWallsH = wallsH, oldWallsV = wallsV, oldPainted = paintedCells, oldStartPainted = startPaintedCells;
+            fieldSize = newSize; sizeLabel.innerText = `Размер: ${fieldSize}x${fieldSize}`;
+            initArrays(fieldSize);
+            for (let y = 0; y < Math.min(oldSize, fieldSize); y++) {
+                for (let x = 0; x < Math.min(oldSize, fieldSize); x++) {
+                    paintedCells[y][x] = oldPainted[y][x]; startPaintedCells[y][x] = oldStartPainted[y][x];
+                    if (y > 0) wallsH[y][x] = oldWallsH[y][x]; if (x > 0) wallsV[y][x] = oldWallsV[y][x];
+                }
+            }
+            if (userStartX >= fieldSize) userStartX = fieldSize - 1; if (userStartY >= fieldSize) userStartY = fieldSize - 1;
+            robotX = userStartX; robotY = userStartY; createGrid();
+        }
+
+        document.getElementById('incSizeBtn').addEventListener('click', () => resizeField(fieldSize + 1));
+        document.getElementById('decSizeBtn').addEventListener('click', () => resizeField(fieldSize - 1));
+        document.getElementById('resetPosBtn').addEventListener('click', () => { if (!isRunning) { userStartX = 0; userStartY = 0; restoreToUserState(); log('Робот выставлен в (1,1)'); } });
+        document.getElementById('clearCodeBtn').addEventListener('click', () => { codeEditor.value = 'использовать Робот\nалг\nнач\n\nкон'; });
+        document.getElementById('clearWallsBtn').addEventListener('click', () => { if (!isRunning) { initArrays(fieldSize); userStartX = 0; userStartY = 0; robotX = 0; robotY = 0; createGrid(); log('Карта стёрта.'); } });
+
+        // --- ИНИЦИАЛИЗАЦИЯ И СТАРТ ПРИЛОЖЕНИЯ ---
+        initArrays(fieldSize); 
+        createGrid();
+
+        // --- АВТОМАТИЧЕСКИЕ ОТСТУПЫ ПРИ НАЖАТИИ ENTER ---
+        codeEditor.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Блокируем стандартный Enter, чтобы сделать свой расчет[cite: 3]
+
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                const text = this.value;
+
+                // Получаем массив строк до текущего курсора и находим текущую строку[cite: 3]
+                const linesBefore = text.substring(0, start).split('\n');
+                const currentLine = linesBefore[linesBefore.length - 1];
+
+                // Определяем текущий отступ (все пробелы в начале строки)[cite: 3]
+                const match = currentLine.match(/^(\s*)/);
+                const currentIndent = match ? match[1] : '';
+
+                let nextIndent = currentIndent;
+                const trimmedLine = currentLine.trim().toLowerCase();
+
+                // 1. Увеличиваем отступ после открывающих блоков: нач, нц, если, иначе, выбор, при[cite: 3]
+                if (
+                    trimmedLine.startsWith('нач') || 
+                    trimmedLine.startsWith('нц') || 
+                    trimmedLine.startsWith('если') || 
+                    trimmedLine.endsWith('то') || 
+                    trimmedLine.startsWith('иначе') || 
+                    trimmedLine.startsWith('выбор') ||
+                    trimmedLine.startsWith('при')
+                ) {
+                    nextIndent += '  '; // Добавляем 2 пробела для вложенности[cite: 3]
+                }
+
+                // 2. Корректируем отступ, если текущая строка была закрывающей (кон, кц, все)[cite: 3]
+                if (
+                    trimmedLine.startsWith('кон') || 
+                    trimmedLine.startsWith('кц') || 
+                    trimmedLine.startsWith('все')
+                ) {
+                    nextIndent = currentIndent.substring(2);
+                }
+
+                // Формируем новый текст и вставляем его в textarea[cite: 3]
+                const newText = text.substring(0, start) + '\n' + nextIndent + text.substring(end);
+                this.value = newText;
+
+                // Возвращаем курсор в правильную позицию после добавленного отступа[cite: 3]
+                this.selectionStart = this.selectionEnd = start + 1 + nextIndent.length;
+            }
+        });
+    </script>
+</body>
+</html>
